@@ -26,8 +26,13 @@ export class UserRepository extends Repository<User> {
     try {
       await this.save(user);
     } catch (error) {
+      console.log(error);
       if (error.code === '23505') {
-        throw new ConflictException('Existing username');
+        if (error.detail.includes('email')) {
+          throw new ConflictException('Existing email');
+        } else if (error.detail.includes('nickname')) {
+          throw new ConflictException('Existing nickname');
+        }
       } else {
         throw new InternalServerErrorException();
       }
