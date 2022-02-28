@@ -1,13 +1,36 @@
-import { Repository } from "typeorm";
-import { User } from "./user.entity";
-import { AuthCredentialDto } from "./dto/auth-credential.dto";
-import * as bcrypt from 'bcryptjs'
+import { EntityRepository, Repository } from 'typeorm';
+import { User } from './user.entity';
+import { AuthCredentialDto } from './dto/auth-credential.dto';
+import * as bcrypt from 'bcrypt';
+import {
+  ConflictException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 
-export class UserRepository extends Repository<User>{
-  async createUser(authCredentialDto: AuthCredentialDto) : Promise<void>{
-    const {email, password, username, nickname} = authCredentialDto;
+@EntityRepository(User)
+export class UserRepository extends Repository<User> {
+  async createUser(authCredentialDto: AuthCredentialDto): Promise<void> {
+    const { email, password, username, nickname } = authCredentialDto;
 
     const salt = await bcrypt.genSalt();
+    const hashPassword = await bcrypt.hash(password, salt);
 
+    const user = this.create({
+      email,
+      password: hashPassword,
+      username,
+      nickname,
+    });
+    console.log(user);
+
+    try {
+      await this.save(user);
+    } catch (error) {
+      if (error.code === '23505') {
+        throw new ConflictException('Existing username');
+      } else {
+        throw new InternalServerErrorException();
+      }
+    }
   }
 }
